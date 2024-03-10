@@ -217,7 +217,7 @@ class XenoCode(QMainWindow):
         self.config = configparser.ConfigParser()
         self.config.read('settings.config')
 
-        self.current_version = '1.0'
+        self.current_version = '1.0.1'
         self.latest_version = self.get_latest_version()
 
         self.initUI()
@@ -225,7 +225,7 @@ class XenoCode(QMainWindow):
                             self.config.getint('Preferences', 'font_size', fallback=12))
 
     def get_latest_version(self):
-        url = 'https://raw.githubusercontent.com/your_username/your_repository/main/version.txt'
+        url = 'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/main/version.txt'
         try:
             response = requests.get(url)
             response.raise_for_status()
