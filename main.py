@@ -1,6 +1,7 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QAction, QFileDialog, QDialog, QVBoxLayout, QLabel, QTabWidget, QWidget, QComboBox, QSlider, QDialogButtonBox, QMessageBox
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 import configparser
 import requests
 
@@ -13,14 +14,40 @@ class PreferencesWindow(QDialog):
         super().__init__()
 
         self.config = configparser.ConfigParser()
-        self.config.read('settings.config')
-
         self.settings = {
-            'theme_index': self.config.getint('Preferences', 'theme_index', fallback=0),
-            'font_size': self.config.getint('Preferences', 'font_size', fallback=12),
+            'theme_index': 0,
+            'font_size': 12,
         }
 
+        try:
+            self.config.read('settings.config')
+            self.loadSettings()
+        except Exception as e:
+            print(f"Error reading settings: {e}")
+            QMessageBox.critical(self, 'Error', 'Error reading settings. Default settings will be used.')
+
         self.initUI()
+
+    def loadSettings(self):
+        try:
+            self.settings['theme_index'] = self.config.getint('Preferences', 'theme_index', fallback=0)
+            self.settings['font_size'] = self.config.getint('Preferences', 'font_size', fallback=12)
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+            raise  # Re-raise the exception to be caught by the calling code
+
+    def saveSettings(self):
+        try:
+            self.config['Preferences'] = {
+                'theme_index': str(self.settings['theme_index']),
+                'font_size': str(self.settings['font_size']),
+            }
+
+            with open('settings.config', 'w') as configfile:
+                self.config.write(configfile)
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+            raise  # Re-raise the exception to be caught by the calling code
 
     def initUI(self):
         self.setWindowTitle('Preferences')
@@ -78,31 +105,110 @@ class PreferencesWindow(QDialog):
         self.settings['font_size'] = font_size
 
     def handleButtonClick(self, button):
-        if button.text() == 'Apply':
-            print('Apply button clicked')
-            self.applyChanges()
-            self.accept()
-        elif button.text() == 'Ok':
-            print('Ok button clicked')
-            self.applyChanges()
-            self.accept()
-        elif button.text() == 'Close':
-            print('Close button clicked')
-            self.reject()
+        try:
+            if button.text() == 'Apply':
+                print('Apply button clicked')
+                self.applyChanges()
+                self.accept()
+            elif button.text() == 'Ok':
+                print('Ok button clicked')
+                self.applyChanges()
+                self.accept()
+            elif button.text() == 'Close':
+                print('Close button clicked')
+                self.reject()
+        except Exception as e:
+            print(f"Error handling button click: {e}")
+            QMessageBox.critical(self, 'Error', 'An error occurred. Please try again.')
 
     def applyChanges(self):
-        theme_index = self.settings['theme_index']
-        font_size = self.settings['font_size']
+        try:
+            theme_index = self.settings['theme_index']
+            font_size = self.settings['font_size']
 
-        print(f"Applying changes - Theme: {theme_index}, Font Size: {font_size}")
+            print(f"Applying changes - Theme: {theme_index}, Font Size: {font_size}")
 
-        self.config['Preferences'] = {
-            'theme_index': str(theme_index),
-            'font_size': str(font_size),
-        }
+            self.saveSettings()
+        except Exception as e:
+            print(f"Error applying changes: {e}")
+            raise  # Re-raise the exception to be caught by the calling code
 
-        with open('settings.config', 'w') as configfile:
-            self.config.write(configfile)
+class LineNumberArea(QWidget):
+    def __init__(self, editor):
+        super().__init__(editor)
+        self.editor = editor
+
+    def sizeHint(self):
+        return QSize(self.editor.lineNumberAreaWidth(), 0)
+
+    def paintEvent(self, event):
+        self.editor.lineNumberAreaPaintEvent(event)
+
+class CodeEditor(QPlainTextEdit):
+    def __init__(self):
+        super().__init__()
+
+        self.lineNumberArea = LineNumberArea(self)
+
+        self.blockCountChanged.connect(self.updateLineNumberAreaWidth)
+        self.updateRequest.connect(self.updateLineNumberArea)
+
+        self.updateLineNumberAreaWidth(0)
+
+    def lineNumberAreaWidth(self):
+        digits = 1
+        count = max(1, self.blockCount())
+        while count >= 10:
+            count /= 10
+            digits += 1
+        space = 3 + self.fontMetrics().width('9') * digits
+        return space
+
+    def updateLineNumberAreaWidth(self, _):
+        width = self.lineNumberAreaWidth()
+        self.setViewportMargins(width, 0, 0, 0)
+
+    def updateLineNumberArea(self, rect, dy):
+        if dy:
+            self.lineNumberArea.scroll(0, dy)
+        else:
+            self.lineNumberArea.update(0, rect.y(), self.lineNumberArea.width(), rect.height())
+
+        if rect.contains(self.viewport().rect()):
+            self.updateLineNumberAreaWidth(0)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
+        cr = self.contentsRect()
+        self.lineNumberArea.setGeometry(QRect(cr.left(), cr.top(), self.lineNumberAreaWidth(), cr.height()))
+
+    def lineNumberAreaPaintEvent(self, event):
+        painter = QPainter(self.lineNumberArea)
+        painter.fillRect(event.rect(), Qt.lightGray)
+
+        block = self.firstVisibleBlock()
+        blockNumber = block.blockNumber()
+        top = self.blockBoundingGeometry(block).translated(self.contentOffset()).top()
+        bottom = top + self.blockBoundingRect(block).height()
+
+        currentLineNumber = blockNumber + 1
+
+        painter.setFont(self.font())
+        painter.setPen(Qt.black)
+
+        while block.isValid() and top <= event.rect().bottom():
+            if block.isVisible() and bottom >= event.rect().top():
+                text = str(currentLineNumber)
+                painter.drawText(
+                    QRect(0, int(top), self.lineNumberArea.width(), int(self.fontMetrics().height())),
+                    Qt.AlignRight, text
+                )
+
+            block = block.next()
+            top = bottom
+            bottom = top + self.blockBoundingRect(block).height()
+            currentLineNumber += 1
 
 class XenoCode(QMainWindow):
     def __init__(self):
@@ -115,7 +221,8 @@ class XenoCode(QMainWindow):
         self.latest_version = self.get_latest_version()
 
         self.initUI()
-        self.updateSettings(self.config.getint('Preferences', 'theme_index', fallback=0), self.config.getint('Preferences', 'font_size', fallback=12))
+        self.updateSettings(self.config.getint('Preferences', 'theme_index', fallback=0),
+                            self.config.getint('Preferences', 'font_size', fallback=12))
 
     def get_latest_version(self):
         url = 'https://raw.githubusercontent.com/your_username/your_repository/main/version.txt'
@@ -145,8 +252,15 @@ class XenoCode(QMainWindow):
         # Add logic to download and apply the update
 
     def initUI(self):
-        self.textEdit = QTextEdit()
-        self.setCentralWidget(self.textEdit)
+        self.codeEditor = CodeEditor()
+        self.setCentralWidget(self.codeEditor)
+
+        self.lineNumberArea = LineNumberArea(self.codeEditor)
+
+        self.codeEditor.setViewportMargins(self.lineNumberArea.width(), 0, 0, 0)
+        self.codeEditor.setTabStopWidth(20)
+
+        self.codeEditor.cursorPositionChanged.connect(self.updateStatusBar)
 
         menubar = self.menuBar()
 
@@ -173,19 +287,19 @@ class XenoCode(QMainWindow):
         editMenu = menubar.addMenu('Edit')
 
         undoAction = QAction('Undo', self)
-        undoAction.triggered.connect(self.textEdit.undo)
+        undoAction.triggered.connect(self.codeEditor.undo)
         editMenu.addAction(undoAction)
 
         cutAction = QAction('Cut', self)
-        cutAction.triggered.connect(self.textEdit.cut)
+        cutAction.triggered.connect(self.codeEditor.cut)
         editMenu.addAction(cutAction)
 
         copyAction = QAction('Copy', self)
-        copyAction.triggered.connect(self.textEdit.copy)
+        copyAction.triggered.connect(self.codeEditor.copy)
         editMenu.addAction(copyAction)
 
         pasteAction = QAction('Paste', self)
-        pasteAction.triggered.connect(self.textEdit.paste)
+        pasteAction.triggered.connect(self.codeEditor.paste)
         editMenu.addAction(pasteAction)
 
         # Settings menu
@@ -195,12 +309,21 @@ class XenoCode(QMainWindow):
         preferencesAction.triggered.connect(self.showPreferences)
         settingsMenu.addAction(preferencesAction)
 
+        # Status Bar
+        self.statusBar = self.statusBar()
+
         self.setGeometry(300, 300, 600, 400)
         self.setWindowTitle('XenoCode')
         self.show()
 
+    def updateStatusBar(self):
+        cursor = self.codeEditor.textCursor()
+        line = cursor.blockNumber() + 1
+        column = cursor.columnNumber() + 1
+        self.statusBar.showMessage(f'Line: {line}, Column: {column}')
+
     def newFile(self):
-        self.textEdit.clear()
+        self.codeEditor.clear()
 
     def showDialog(self):
         options = QFileDialog.Options()
@@ -212,7 +335,7 @@ class XenoCode(QMainWindow):
         if fname:
             with open(fname, 'r') as f:
                 data = f.read()
-                self.textEdit.setText(data)
+                self.codeEditor.setPlainText(data)
 
     def saveDialog(self):
         options = QFileDialog.Options()
@@ -222,7 +345,7 @@ class XenoCode(QMainWindow):
 
         if fname:
             with open(fname, 'w') as f:
-                f.write(self.textEdit.toPlainText())
+                f.write(self.codeEditor.toPlainText())
 
     def showPreferences(self):
         preferences_window = PreferencesWindow()
@@ -235,17 +358,17 @@ class XenoCode(QMainWindow):
     def updateSettings(self, theme_index, font_size):
         theme_stylesheets = [
             '',  # Light Theme
-            'QTextEdit { background-color: #333; color: #FFF; }',  # Dark Theme
-            'QTextEdit { background-color: #007acc; color: #FFF; }',  # Ocean Theme
-            'QTextEdit { background-color: #ffa07a; color: #FFF; }',  # Sunset Theme
-            'QTextEdit { background-color: #228B22; color: #FFF; }',  # Forest Theme
+            'QPlainTextEdit { background-color: #333; color: #FFF; }',  # Dark Theme
+            'QPlainTextEdit { background-color: #007acc; color: #FFF; }',  # Ocean Theme
+            'QPlainTextEdit { background-color: #ffa07a; color: #FFF; }',  # Sunset Theme
+            'QPlainTextEdit { background-color: #228B22; color: #FFF; }',  # Forest Theme
         ]
 
-        self.textEdit.setStyleSheet(theme_stylesheets[theme_index])
+        self.codeEditor.setStyleSheet(theme_stylesheets[theme_index])
 
-        font = self.textEdit.font()
+        font = self.codeEditor.font()
         font.setPointSize(font_size)
-        self.textEdit.setFont(font)
+        self.codeEditor.setFont(font)
 
     def main(self):
         if self.check_for_updates():
@@ -253,7 +376,6 @@ class XenoCode(QMainWindow):
                 self.download_and_apply_update()
 
         app = QApplication(sys.argv)
-        xenocode_editor = XenoCode()
         sys.exit(app.exec_())
 
 if __name__ == '__main__':
