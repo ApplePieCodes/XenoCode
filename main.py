@@ -33,7 +33,7 @@ class PreferencesWindow(QDialog):
             self.settings['theme_index'] = self.config.getint('Preferences', 'theme_index', fallback=0)
             self.settings['font_size'] = self.config.getint('Preferences', 'font_size', fallback=12)
         except Exception as e:
-            print(f"Error loading settings: {e}")
+             print(f"Error loading settings: {e}")
             raise  # Re-raise the exception to be caught by the calling code
 
     def saveSettings(self):
@@ -105,18 +105,18 @@ class PreferencesWindow(QDialog):
         self.settings['font_size'] = font_size
 
     def handleButtonClick(self, button):
+        actions = {
+            'Apply': self.applyChanges,
+            'Ok': self.applyChanges,
+            'Close': self.reject,
+        }
+
         try:
-            if button.text() == 'Apply':
-                print('Apply button clicked')
-                self.applyChanges()
+            action = actions.get(button.text())
+            if action:
+                print(f'{button.text()} button clicked')
+                action()
                 self.accept()
-            elif button.text() == 'Ok':
-                print('Ok button clicked')
-                self.applyChanges()
-                self.accept()
-            elif button.text() == 'Close':
-                print('Close button clicked')
-                self.reject()
         except Exception as e:
             print(f"Error handling button click: {e}")
             QMessageBox.critical(self, 'Error', 'An error occurred. Please try again.')
@@ -236,7 +236,13 @@ class XenoCode(QMainWindow):
             return None
 
     def check_for_updates(self):
-        return self.latest_version and self.current_version < self.latest_version
+        if not self.latest_version:
+            return False
+    
+        current_version_tuple = tuple(map(int, self.current_version.split('.')))
+        latest_version_tuple = tuple(map(int, self.latest_version.split('.')))
+
+        return current_version_tuple < latest_version_tuple
 
     def prompt_for_update(self):
         reply = QMessageBox.question(
@@ -329,7 +335,7 @@ class XenoCode(QMainWindow):
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
         options |= QFileDialog.DontUseNativeDialog
-        filters = "Python Files (*.py);;C Files (*.c);;C++ Files (*.cpp, *.c++);;Java Files (*.java);;C# Files (*.cs, *.cake, *.csx);;Visual Basic Files (*.vb, *.vbs);;JavaScript (*.js);;SQL Files (*.sql);;Assembly Files (*.asm);;PHP Files (*.php, *.php3, *.php4, *.php5);;R Files (*.r);;C Files (*.c);;Go Files (*.go);;MatLab Files (*.matlab);;Swift Files (*.swift);;Ruby Files (*.rb, *.ruby);;Perl Files (*.pl, *.perl);;Objective-C Files (*.m, *.h);;Rust Files (*.rs);;SAS Files (*.sas);;Kotlin Files (*.kt, *.ktm, *.kts);;Julia Files (*.jl);;Lua Files (*.lua);;Fortran Files (*.f, *.for, *.f77, *.f90, *.f95, *.f03, *.f08);;Cobol Files (*.cob, *.cobol);;Lisp Files (*.lisp);;Ada Files (*.ada);;Dart Files (*.dart);;Scala Files (*.scala);;Prolog Files (*.pro, *.pl, *.prolog);;D Files (*.d);;Shell Files (*.sh, *.bash);;PowerShell Files (*.ps1)"
+        filters = "Python Files (*.py);;C Files (*.c);;C++ Files (*.cpp, *.c++);;Java Files (*.java);;C# Files (*.cs, *.cake, *.csx);;Visual Basic Files (*.vb, *.vbs);;JavaScript (*.js);;SQL Files (*.sql);;Assembly Files (*.asm);;PHP Files (*.php, *.php3, *.php4, *.php5);;R Files (*.r);;Go Files (*.go);;MatLab Files (*.matlab);;Swift Files (*.swift);;Ruby Files (*.rb, *.ruby);;Perl Files (*.pl, *.perl);;Objective-C Files (*.m, *.h);;Rust Files (*.rs);;SAS Files (*.sas);;Kotlin Files (*.kt, *.ktm, *.kts);;Julia Files (*.jl);;Lua Files (*.lua);;Fortran Files (*.f, *.for, *.f77, *.f90, *.f95, *.f03, *.f08);;Cobol Files (*.cob, *.cobol);;Lisp Files (*.lisp);;Ada Files (*.ada);;Dart Files (*.dart);;Scala Files (*.scala);;Prolog Files (*.pro, *.pl, *.prolog);;D Files (*.d);;Shell Files (*.sh, *.bash);;PowerShell Files (*.ps1)"
         fname, _ = QFileDialog.getOpenFileName(self, 'Open file', '/home', filters, options=options)
 
         if fname:
@@ -340,7 +346,7 @@ class XenoCode(QMainWindow):
     def saveDialog(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        filters = "Python Files (*.py);;C Files (*.c);;C++ Files (*.cpp, *.c++);;Java Files (*.java);;C# Files (*.cs, *.cake, *.csx);;Visual Basic Files (*.vb, *.vbs);;JavaScript (*.js);;SQL Files (*.sql);;Assembly Files (*.asm);;PHP Files (*.php, *.php3, *.php4, *.php5);;R Files (*.r);;C Files (*.c);;Go Files (*.go);;MatLab Files (*.matlab);;Swift Files (*.swift);;Ruby Files (*.rb, *.ruby);;Perl Files (*.pl, *.perl);;Objective-C Files (*.m, *.h);;Rust Files (*.rs);;SAS Files (*.sas);;Kotlin Files (*.kt, *.ktm, *.kts);;Julia Files (*.jl);;Lua Files (*.lua);;Fortran Files (*.f, *.for, *.f77, *.f90, *.f95, *.f03, *.f08);;Cobol Files (*.cob, *.cobol);;Lisp Files (*.lisp);;Ada Files (*.ada);;Dart Files (*.dart);;Scala Files (*.scala);;Prolog Files (*.pro, *.pl, *.prolog);;D Files (*.d);;Shell Files (*.sh, *.bash);;PowerShell Files (*.ps1)"
+        filters = "Python Files (*.py);;C Files (*.c);;C++ Files (*.cpp, *.c++);;Java Files (*.java);;C# Files (*.cs, *.cake, *.csx);;Visual Basic Files (*.vb, *.vbs);;JavaScript (*.js);;SQL Files (*.sql);;Assembly Files (*.asm);;PHP Files (*.php, *.php3, *.php4, *.php5);;R Files (*.r);;Go Files (*.go);;MatLab Files (*.matlab);;Swift Files (*.swift);;Ruby Files (*.rb, *.ruby);;Perl Files (*.pl, *.perl);;Objective-C Files (*.m, *.h);;Rust Files (*.rs);;SAS Files (*.sas);;Kotlin Files (*.kt, *.ktm, *.kts);;Julia Files (*.jl);;Lua Files (*.lua);;Fortran Files (*.f, *.for, *.f77, *.f90, *.f95, *.f03, *.f08);;Cobol Files (*.cob, *.cobol);;Lisp Files (*.lisp);;Ada Files (*.ada);;Dart Files (*.dart);;Scala Files (*.scala);;Prolog Files (*.pro, *.pl, *.prolog);;D Files (*.d);;Shell Files (*.sh, *.bash);;PowerShell Files (*.ps1)"
         fname, _ = QFileDialog.getSaveFileName(self, 'Save file', '/home', filters, options=options)
 
         if fname:
