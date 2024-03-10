@@ -31,15 +31,40 @@ class SnippetsDialog(QDialog):
     def loadSnippets(self):
         try:
             with open('snippets.txt', 'r') as file:
-                snippets = [line.strip() for line in file.readlines()]
+                lines = file.readlines()
+
+            snippets = []
+            current_snippet = None
+
+            for line in lines:
+                line = line.strip()
+
+                if line.startswith(";;") and line.endswith(";;"):
+                    # New snippet name
+                    current_snippet = {"name": line[2:-2], "command": ""}
+                elif line.startswith(":") and line.endswith(":") and current_snippet is not None:
+                    # Command for the current snippet
+                    current_snippet["command"] = line[1:-1]
+                    snippets.append(current_snippet)
+                    current_snippet = None
+
             return snippets
         except FileNotFoundError:
             print("Snippets file not found.")
             return []
 
+    def copySnippet(self, item):
+        selected_snippet = next((snippet for snippet in self.snippets if snippet["name"] == item.text()), None)
+        if selected_snippet:
+            clipboard = QApplication.clipboard()
+            clipboard.setText(selected_snippet["command"])
+            print(f"Snippet '{selected_snippet['name']}' copied to clipboard.")
+
     def populateSnippetsList(self):
         self.snippetsListWidget.clear()
-        self.snippetsListWidget.addItems(self.snippets)
+        snippet_names = [snippet["name"] for snippet in self.snippets]
+        self.snippetsListWidget.addItems(snippet_names)
+        self.snippetsListWidget.itemDoubleClicked.connect(self.copySnippet)
 
 class PreferencesWindow(QDialog):
     def __init__(self):
@@ -312,11 +337,10 @@ class XenoCode(QMainWindow):
             print(f"Error fetching latest version: {e}")
             return None
 
-
     def check_for_updates(self):
         if not self.latest_version:
             return False
-    
+
         current_version_tuple = tuple(map(int, self.current_version.split('.')))
         latest_version_tuple = tuple(map(int, self.latest_version.split('.')))
 
@@ -414,97 +438,119 @@ class XenoCode(QMainWindow):
         preferencesAction.triggered.connect(self.showPreferences)
         settingsMenu.addAction(preferencesAction)
 
-        snippetsAction = QAction('Snippets', self)
-        snippetsAction.triggered.connect(self.showSnippetsDialog)
-
-        settingsMenu.addAction(preferencesAction)
+        snippetsAction = QAction('Code Snippets', self)
+        snippetsAction.triggered.connect(self.showSnippets)
         settingsMenu.addAction(snippetsAction)
 
-        # Status Bar
-        self.statusBar = self.statusBar()
+        # Help menu
+        helpMenu = menubar.addMenu('Help')
 
-        self.setGeometry(300, 300, 600, 400)
+        aboutAction = QAction('About', self)
+        aboutAction.triggered.connect(self.showAboutDialog)
+        helpMenu.addAction(aboutAction)
+
+        updateAction = QAction('Check for Updates', self)
+        updateAction.triggered.connect(self.checkForUpdatesAndPrompt)
+        helpMenu.addAction(updateAction)
+
+        # Status bar
+        self.statusBar = QStatusBar()
+        self.setStatusBar(self.statusBar)
+        self.updateStatusBar()
+
+        self.setGeometry(100, 100, 800, 600)
         self.setWindowTitle('XenoCode')
         self.show()
 
-    def showSnippetsDialog(self):
-        snippets_dialog = SnippetsDialog()
-        snippets_dialog.exec_()
-
-    def updateStatusBar(self):
-        cursor = self.codeEditor.textCursor()
-        line = cursor.blockNumber() + 1
-        column = cursor.columnNumber() + 1
-        self.statusBar.showMessage(f'Line: {line}, Column: {column}')
-
-    def newFile(self):
-        self.codeEditor.clear()
-
     def showDialog(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.ReadOnly
-        options |= QFileDialog.DontUseNativeDialog
-        filters = "Python Files (*.py);;C Files (*.c);;C++ Files (*.cpp, *.c++);;Java Files (*.java);;C# Files (*.cs, *.cake, *.csx);;Visual Basic Files (*.vb, *.vbs);;JavaScript (*.js);;SQL Files (*.sql);;Assembly Files (*.asm);;PHP Files (*.php, *.php3, *.php4, *.php5);;R Files (*.r);;Go Files (*.go);;MatLab Files (*.matlab);;Swift Files (*.swift);;Ruby Files (*.rb, *.ruby);;Perl Files (*.pl, *.perl);;Objective-C Files (*.m, *.h);;Rust Files (*.rs);;SAS Files (*.sas);;Kotlin Files (*.kt, *.ktm, *.kts);;Julia Files (*.jl);;Lua Files (*.lua);;Fortran Files (*.f, *.for, *.f77, *.f90, *.f95, *.f03, *.f08);;Cobol Files (*.cob, *.cobol);;Lisp Files (*.lisp);;Ada Files (*.ada);;Dart Files (*.dart);;Scala Files (*.scala);;Prolog Files (*.pro, *.pl, *.prolog);;D Files (*.d);;Shell Files (*.sh, *.bash);;PowerShell Files (*.ps1)"
-        fname, _ = QFileDialog.getOpenFileName(self, 'Open file', '/home', filters, options=options)
+        fname = QFileDialog.getOpenFileName(self, 'Open file', './')
 
-        if fname:
-            with open(fname, 'r') as f:
+        if fname[0]:
+            f = open(fname[0], 'r')
+
+            with f:
                 data = f.read()
                 self.codeEditor.setPlainText(data)
 
     def saveDialog(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
-        filters = "Python Files (*.py);;C Files (*.c);;C++ Files (*.cpp, *.c++);;Java Files (*.java);;C# Files (*.cs, *.cake, *.csx);;Visual Basic Files (*.vb, *.vbs);;JavaScript (*.js);;SQL Files (*.sql);;Assembly Files (*.asm);;PHP Files (*.php, *.php3, *.php4, *.php5);;R Files (*.r);;Go Files (*.go);;MatLab Files (*.matlab);;Swift Files (*.swift);;Ruby Files (*.rb, *.ruby);;Perl Files (*.pl, *.perl);;Objective-C Files (*.m, *.h);;Rust Files (*.rs);;SAS Files (*.sas);;Kotlin Files (*.kt, *.ktm, *.kts);;Julia Files (*.jl);;Lua Files (*.lua);;Fortran Files (*.f, *.for, *.f77, *.f90, *.f95, *.f03, *.f08);;Cobol Files (*.cob, *.cobol);;Lisp Files (*.lisp);;Ada Files (*.ada);;Dart Files (*.dart);;Scala Files (*.scala);;Prolog Files (*.pro, *.pl, *.prolog);;D Files (*.d);;Shell Files (*.sh, *.bash);;PowerShell Files (*.ps1)"
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save file', '/home', filters, options=options)
+        fname = QFileDialog.getSaveFileName(self, 'Save file', './')
 
-        if fname:
-            with open(fname, 'w') as f:
-                f.write(self.codeEditor.toPlainText())
+        if fname[0]:
+            f = open(fname[0], 'w')
+
+            with f:
+                text = self.codeEditor.toPlainText()
+                f.write(text)
+
+    def newFile(self):
+        self.codeEditor.clear()
+
+    def updateStatusBar(self):
+        cursor = self.codeEditor.textCursor()
+        line = cursor.blockNumber() + 1
+        col = cursor.columnNumber() + 1
+
+        self.statusBar.showMessage(f'Line: {line}, Column: {col}')
+
+    def showAboutDialog(self):
+        about_text = (
+            'XenoCode - A simple code editor\n\n'
+            'Version: {}\n\n'
+            'Created by Liam\n'
+            'GitHub: https://github.com/ApplePieCodes/XenoCode'
+        ).format(self.current_version)
+
+        QMessageBox.about(self, 'About XenoCode', about_text)
 
     def showPreferences(self):
-        preferences_window = PreferencesWindow()
-        result = preferences_window.exec_()
+        preferences = PreferencesWindow()
+        preferences.exec_()
 
-        if result == QDialog.Accepted:
-            settings = preferences_window.settings
-            self.updateSettings(settings['theme_index'], settings['font_size'])
+        theme_index = preferences.settings['theme_index']
+        font_size = preferences.settings['font_size']
+        custom_stylesheet = preferences.settings['custom_stylesheet']
 
-    def updateSettings(self, theme_index, font_size, custom_stylesheet=''):
-        theme_stylesheets = [
-            '',  # Light Theme
-            'QPlainTextEdit { background-color: #333; color: #FFF; }',  # Dark Theme
-            'QPlainTextEdit { background-color: #007acc; color: #FFF; }',  # Ocean Theme
-            'QPlainTextEdit { background-color: #ffa07a; color: #FFF; }',  # Sunset Theme
-            'QPlainTextEdit { background-color: #228B22; color: #FFF; }',  # Forest Theme
-        ]
+        self.updateSettings(theme_index, font_size, custom_stylesheet)
 
-        self.codeEditor.setStyleSheet(theme_stylesheets[theme_index])
+    def showSnippets(self):
+        snippets_dialog = SnippetsDialog()
+        snippets_dialog.exec_()
 
+    def updateSettings(self, theme_index, font_size, custom_stylesheet):
+        # Theme
+        theme_stylesheet = ''
+        if theme_index == 1:  # Dark Theme
+            theme_stylesheet = 'styles/dark_theme.css'
+        elif theme_index == 2:  # Ocean Theme
+            theme_stylesheet = 'styles/ocean_theme.css'
+        elif theme_index == 3:  # Sunset Theme
+            theme_stylesheet = 'styles/sunset_theme.css'
+        elif theme_index == 4:  # Forest Theme
+            theme_stylesheet = 'styles/forest_theme.css'
+
+        # Apply the selected theme or custom stylesheet
+        if custom_stylesheet:
+            self.setStyleSheet(custom_stylesheet)
+        elif theme_stylesheet:
+            with open(theme_stylesheet, 'r') as theme_file:
+                self.setStyleSheet(theme_file.read())
+
+        # Font Size
         font = self.codeEditor.font()
         font.setPointSize(font_size)
         self.codeEditor.setFont(font)
 
-    def main(self):
+    def checkForUpdatesAndPrompt(self):
         if self.check_for_updates():
             if self.prompt_for_update():
                 self.download_and_apply_update()
 
-        app = QApplication(sys.argv)
-        sys.exit(app.exec_())
-
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    xenoCode = XenoCode()
 
-    # Create an instance of the CodeSnippetManager
-    code_snippet_manager = CodeSnippetManager()
+    # Check for updates and prompt if available
+    if xenoCode.check_for_updates():
+        xenoCode.prompt_for_update()
 
-    # Load code snippets from a GitHub file (replace 'github_raw_url' with your actual URL)
-    github_raw_url = 'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/main/snippets.txt'
-    code_snippet_manager.load_snippets_from_github(github_raw_url)
-
-    # Create an instance of the XenoCode editor
-    xenocode_editor = XenoCode()
-
-    # Run the application
     sys.exit(app.exec_())
