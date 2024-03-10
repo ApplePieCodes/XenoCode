@@ -33,7 +33,7 @@ class PreferencesWindow(QDialog):
             self.settings['theme_index'] = self.config.getint('Preferences', 'theme_index', fallback=0)
             self.settings['font_size'] = self.config.getint('Preferences', 'font_size', fallback=12)
         except Exception as e:
-             print(f"Error loading settings: {e}")
+            print(f"Error loading settings: {e}")
             raise  # Re-raise the exception to be caught by the calling code
 
     def saveSettings(self):
@@ -225,15 +225,16 @@ class XenoCode(QMainWindow):
                             self.config.getint('Preferences', 'font_size', fallback=12))
 
     def get_latest_version(self):
-        url = 'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/main/version.txt'
+        version_url = 'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/main/version.txt'
         try:
-            response = requests.get(url)
+            response = requests.get(version_url)
             response.raise_for_status()
             latest_version = response.text.strip()
             return latest_version
         except requests.RequestException as e:
             print(f"Error fetching latest version: {e}")
             return None
+
 
     def check_for_updates(self):
         if not self.latest_version:
@@ -254,8 +255,29 @@ class XenoCode(QMainWindow):
         return reply == QMessageBox.Yes
 
     def download_and_apply_update(self):
-        print("Downloading and applying update...")
-        # Add logic to download and apply the update
+        try:
+            # Fetch the manifest file from GitHub
+            manifest_url = 'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/main/manifest.txt'
+            response = requests.get(manifest_url)
+            response.raise_for_status()
+            manifest_content = response.text.strip()
+
+            # Parse the manifest content to get file names
+            file_names = manifest_content.split('\n')
+
+            # Download and replace the existing files
+            for file_name in file_names:
+                file_url = f'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/main/{file_name}'
+                response = requests.get(file_url)
+                response.raise_for_status()
+
+                # Save the downloaded file
+                with open(file_name, 'w') as f:
+                    f.write(response.text)
+
+            print("Update applied successfully!")
+        except requests.RequestException as e:
+            print(f"Error applying update: {e}")
 
     def initUI(self):
         self.codeEditor = CodeEditor()
