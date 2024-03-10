@@ -458,7 +458,7 @@ if __name__ == '__main__':
     code_snippet_manager = CodeSnippetManager()
 
     # Load code snippets from a GitHub file (replace 'github_raw_url' with your actual URL)
-    github_raw_url = 'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/snippets.txt'
+    github_raw_url = 'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/main/snippets.txt'
     code_snippet_manager.load_snippets_from_github(github_raw_url)
 
     # Create an instance of the XenoCode editor
