@@ -1,2 +1,1 @@
-Meaning of Life
-print("42")
+Meaning of Life  print("42")

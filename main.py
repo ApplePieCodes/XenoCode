@@ -9,6 +9,38 @@ import requests
 # XENOCODE IDE
 #################################
 
+class SnippetsDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+
+        self.snippets = self.loadSnippets()
+
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle('Code Snippets')
+        self.setGeometry(300, 300, 400, 300)
+
+        # Create a list widget to display snippets
+        self.snippetsListWidget = QListWidget(self)
+        self.populateSnippetsList()
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.snippetsListWidget)
+
+    def loadSnippets(self):
+        try:
+            with open('snippets.txt', 'r') as file:
+                snippets = [line.strip() for line in file.readlines()]
+            return snippets
+        except FileNotFoundError:
+            print("Snippets file not found.")
+            return []
+
+    def populateSnippetsList(self):
+        self.snippetsListWidget.clear()
+        self.snippetsListWidget.addItems(self.snippets)
+
 class PreferencesWindow(QDialog):
     def __init__(self):
         super().__init__()
@@ -382,12 +414,22 @@ class XenoCode(QMainWindow):
         preferencesAction.triggered.connect(self.showPreferences)
         settingsMenu.addAction(preferencesAction)
 
+        snippetsAction = QAction('Snippets', self)
+        snippetsAction.triggered.connect(self.showSnippetsDialog)
+
+        settingsMenu.addAction(preferencesAction)
+        settingsMenu.addAction(snippetsAction)
+
         # Status Bar
         self.statusBar = self.statusBar()
 
         self.setGeometry(300, 300, 600, 400)
         self.setWindowTitle('XenoCode')
         self.show()
+
+    def showSnippetsDialog(self):
+        snippets_dialog = SnippetsDialog()
+        snippets_dialog.exec_()
 
     def updateStatusBar(self):
         cursor = self.codeEditor.textCursor()
