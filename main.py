@@ -225,6 +225,33 @@ class CodeEditor(QPlainTextEdit):
             bottom = top + self.blockBoundingRect(block).height()
             currentLineNumber += 1
 
+class CodeSnippetManager:
+    def __init__(self):
+        self.code_snippets = []
+
+    def add_snippet(self, name, code):
+        self.code_snippets.append({'name': name, 'code': code})
+
+    def load_snippets_from_github(self, github_raw_url):
+        try:
+            response = requests.get(github_raw_url)
+            response.raise_for_status()
+
+            # Assuming each line in the file contains a snippet in the format "Name Code"
+            lines = response.text.splitlines()
+            for line in lines:
+                parts = line.split(' ', 1)
+                if len(parts) == 2:
+                    name, code = parts
+                    self.add_snippet(name, code)
+
+            print("Code snippets loaded successfully.")
+        except requests.RequestException as e:
+            print(f"Error loading snippets from GitHub: {e}")
+
+    def get_snippets(self):
+        return self.code_snippets
+
 class XenoCode(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -426,5 +453,16 @@ class XenoCode(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+
+    # Create an instance of the CodeSnippetManager
+    code_snippet_manager = CodeSnippetManager()
+
+    # Load code snippets from a GitHub file (replace 'github_raw_url' with your actual URL)
+    github_raw_url = 'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/snippets.txt'
+    code_snippet_manager.load_snippets_from_github(github_raw_url)
+
+    # Create an instance of the XenoCode editor
     xenocode_editor = XenoCode()
-    xenocode_editor.main()
+
+    # Run the application
+    sys.exit(app.exec_())
