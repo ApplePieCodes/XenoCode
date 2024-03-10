@@ -7,3 +7,5 @@ XenoCode is a code editor built on python. It's features currently include
 Automatic Updates
 Line Numbers
 Themes
+
+Just download main.py!
