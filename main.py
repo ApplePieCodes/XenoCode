@@ -17,6 +17,7 @@ class PreferencesWindow(QDialog):
         self.settings = {
             'theme_index': 0,
             'font_size': 12,
+            'custom_stylesheet': '',
         }
 
         try:
@@ -32,6 +33,7 @@ class PreferencesWindow(QDialog):
         try:
             self.settings['theme_index'] = self.config.getint('Preferences', 'theme_index', fallback=0)
             self.settings['font_size'] = self.config.getint('Preferences', 'font_size', fallback=12)
+            self.settings['custom_stylesheet'] = self.config.get('Preferences', 'custom_stylesheet', fallback='')
         except Exception as e:
             print(f"Error loading settings: {e}")
             raise  # Re-raise the exception to be caught by the calling code
@@ -41,6 +43,7 @@ class PreferencesWindow(QDialog):
             self.config['Preferences'] = {
                 'theme_index': str(self.settings['theme_index']),
                 'font_size': str(self.settings['font_size']),
+                'custom_stylesheet': self.settings['custom_stylesheet'],
             }
 
             with open('settings.config', 'w') as configfile:
@@ -92,17 +95,29 @@ class PreferencesWindow(QDialog):
         font_size_slider.setValue(self.settings['font_size'])
         font_size_slider.valueChanged.connect(self.changeFontSize)
 
+        # New: Customizable Themes
+        custom_theme_label = QLabel('Custom Theme:')
+        custom_theme_edit = QLineEdit()
+        custom_theme_edit.setPlaceholderText('Enter your custom stylesheet here')
+        custom_theme_edit.textChanged.connect(self.changeCustomTheme)
+
         layout = QVBoxLayout(tab)
         layout.addWidget(theme_label)
         layout.addWidget(theme_combo)
         layout.addWidget(font_size_label)
         layout.addWidget(font_size_slider)
+        layout.addWidget(custom_theme_label)
+        layout.addWidget(custom_theme_edit)
 
     def changeTheme(self, index):
         self.settings['theme_index'] = index
 
     def changeFontSize(self, font_size):
         self.settings['font_size'] = font_size
+
+    # New: Customizable Themes
+    def changeCustomTheme(self, custom_stylesheet):
+        self.settings['custom_stylesheet'] = custom_stylesheet
 
     def handleButtonClick(self, button):
         actions = {
@@ -221,8 +236,11 @@ class XenoCode(QMainWindow):
         self.latest_version = self.get_latest_version()
 
         self.initUI()
-        self.updateSettings(self.config.getint('Preferences', 'theme_index', fallback=0),
-                            self.config.getint('Preferences', 'font_size', fallback=12))
+        self.updateSettings(
+            self.config.getint('Preferences', 'theme_index', fallback=0),
+            self.config.getint('Preferences', 'font_size', fallback=12),
+            self.config.get('Preferences', 'custom_stylesheet', fallback='')
+        )
 
     def get_latest_version(self):
         version_url = 'https://raw.githubusercontent.com/ApplePieCodes/XenoCode/main/version.txt'
@@ -383,7 +401,7 @@ class XenoCode(QMainWindow):
             settings = preferences_window.settings
             self.updateSettings(settings['theme_index'], settings['font_size'])
 
-    def updateSettings(self, theme_index, font_size):
+    def updateSettings(self, theme_index, font_size, custom_stylesheet=''):
         theme_stylesheets = [
             '',  # Light Theme
             'QPlainTextEdit { background-color: #333; color: #FFF; }',  # Dark Theme
