@@ -217,7 +217,7 @@ class XenoCode(QMainWindow):
         self.config = configparser.ConfigParser()
         self.config.read('settings.config')
 
-        self.current_version = '1.0.1'
+        self.current_version = '1.0.3'
         self.latest_version = self.get_latest_version()
 
         self.initUI()
